@@ -5,6 +5,7 @@ import * as path from 'path';
 const typeIcons: {[type: string] : string} = {
     'Bug' : 'icon_bug.svg',
     'Task': 'icon_task.svg',
+    'Task Group': 'icon_task_group.svg',
     'Product Backlog Item': 'icon_backlog_item.svg',
     'Feature': 'icon_feature.svg',
     'Initiative': 'icon_initiative.svg',
@@ -92,8 +93,11 @@ class Azure {
         if (this.isConnected){
             return Promise.resolve(true);
         }
-        const orgUrl =vscode.workspace.getConfiguration().get<string>('vsoitems.OrganizationUrl');
-        const accessToken = vscode.workspace.getConfiguration().get<string>('vsoitems.AzureAccessToken');
+        let accessToken;
+        let orgUrl = vscode.workspace.getConfiguration().get<string>('vsoitems.OrganizationUrl') || await this.updateOrganizationUrl();
+        if (orgUrl){
+            accessToken = vscode.workspace.getConfiguration().get<string>('vsoitems.AzureAccessToken') || await this.updateAccessToken();
+        }
         const connectionAttemptString = `${orgUrl}-${accessToken}`;
         if (accessToken && orgUrl){
             let authHandler = azdev.getPersonalAccessTokenHandler(accessToken); 
@@ -111,13 +115,38 @@ class Azure {
         } else {
             if (!this.lastConnectionAttemptString || this.lastConnectionAttemptString !== connectionAttemptString){
                 this.lastConnectionAttemptString = connectionAttemptString;
-                vscode.window.showInformationMessage("VSO Items: Please provide an Azure organization URL and access token in order to get full details on vso items");
+                vscode.window.showInformationMessage("VSO Items: Please provide an Azure organization URL and access token in settings");
             }
         }
         return Promise.resolve(this.isConnected);
     }
 
     get Connection() : azdev.WebApi | undefined { return this.isConnected ? this.connection : undefined;}
+
+    private async updateOrganizationUrl(){
+        let organizationUrlPrefix: string = "https://dev.azure.com/";
+        let organizationUrlSuffix: string = "{organization}";
+        const value = await vscode.window.showInputBox({
+            value: organizationUrlPrefix + organizationUrlSuffix,
+            valueSelection: [organizationUrlPrefix.length, -1],
+            prompt: "Organization URL"
+        });
+        if(value){
+            vscode.workspace.getConfiguration().update('vsoitems.OrganizationUrl', value, true);
+            return value;
+        }
+    }
+
+    private async updateAccessToken(){
+        let explanationLink: string = "[ https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate ]";
+        const value = await vscode.window.showInputBox({
+            prompt: "Access Token. " + explanationLink
+        });
+        if(value){
+            vscode.workspace.getConfiguration().update('vsoitems.AzureAccessToken', value, true);
+            return value;
+        }
+    }
 }
 
 export class VsoItem extends vscode.TreeItem {

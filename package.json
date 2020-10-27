@@ -30,7 +30,7 @@
 				"vsoitems.AzureAccessToken": {
 					"type": "string",
 					"default": null,
-					"description": "Azure DevOps Access Token.\nhttps://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=preview-page"
+					"description": "Azure DevOps Access Token.\nhttps://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate"
 				}
 			}
 		},
