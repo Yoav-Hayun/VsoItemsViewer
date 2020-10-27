@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128px" height="128px" viewBox="0 0 128 128" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Artboard</title>
+    <defs>
+        <linearGradient x1="50%" y1="99.6878901%" x2="50%" y2="0.187265918%" id="linearGradient-1">
+            <stop stop-color="#0078D4" offset="0%"></stop>
+            <stop stop-color="#1380DA" offset="16%"></stop>
+            <stop stop-color="#3C91E5" offset="53%"></stop>
+            <stop stop-color="#559CEC" offset="82%"></stop>
+            <stop stop-color="#5EA0EF" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="50%" y1="99.6878901%" x2="50%" y2="0.187265918%" id="linearGradient-2">
+            <stop stop-color="#0078D4" offset="0%"></stop>
+            <stop stop-color="#1380DA" offset="16%"></stop>
+            <stop stop-color="#3C91E5" offset="53%"></stop>
+            <stop stop-color="#559CEC" offset="82%"></stop>
+            <stop stop-color="#5EA0EF" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="Artboard" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group-63" fill-rule="nonzero">
+            <text id="VSO" fill="url(#linearGradient-1)" font-family="Heebo-Bold, Heebo" font-size="35.9136691" font-weight="bold">
+                <tspan x="23.942446" y="80.3597122">VSO</tspan>
+            </text>
+            <g id="azure-devops" fill="url(#linearGradient-2)">
+                <path d="M128,23.9700375 L128,101.792759 L96,128 L46.4,109.942572 L46.4,127.8402 L18.32,91.1660424 L100.16,97.5580524 L100.16,27.4856429 L128,23.9700375 Z M100.72,27.8851436 L54.8,0 L54.8,18.2971286 L12.64,30.6816479 L0,46.9013733 L0,83.7353308 L18.08,91.7253433 L18.08,44.5043695 L100.72,27.8851436 Z" id="Shape"></path>
+            </g>
+        </g>
+    </g>
+</svg>

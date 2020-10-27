@@ -22,6 +22,6 @@ This extension contributes the following settings:
 
 ## Release Notes
 
-### 1.0.0
+### 2.3.0
 
-Initial release of the VSO Items extension
+- Added extension icon
