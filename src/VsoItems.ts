@@ -129,7 +129,7 @@ class Azure {
         const value = await vscode.window.showInputBox({
             value: organizationUrlPrefix + organizationUrlSuffix,
             valueSelection: [organizationUrlPrefix.length, -1],
-            prompt: "Organization URL"
+            prompt: "[VSO Items] Organization URL"
         });
         if(value){
             vscode.workspace.getConfiguration().update('vsoitems.OrganizationUrl', value, true);
@@ -138,9 +138,9 @@ class Azure {
     }
 
     private async updateAccessToken(){
-        let explanationLink: string = "[ https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate ]";
+        let explanationLink: string = "https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate";
         const value = await vscode.window.showInputBox({
-            prompt: "Access Token. " + explanationLink
+            prompt: "[VSO Items] Access Token. [ " + explanationLink + " ]"
         });
         if(value){
             vscode.workspace.getConfiguration().update('vsoitems.AzureAccessToken', value, true);
