@@ -22,6 +22,6 @@ This extension contributes the following settings:
 
 ## Release Notes
 
-### 2.3.0
+### 2.4.0
 
-- Added extension icon
+- Prompt for required settings will only show on user click on the refresh button

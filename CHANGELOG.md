@@ -16,3 +16,6 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## 2.3.0
 - Added extension icon
+
+## 2.4.0
+- Prompt for required settings will only show on user click on the refresh button

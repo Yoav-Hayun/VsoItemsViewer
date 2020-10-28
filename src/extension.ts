@@ -12,7 +12,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	vscode.window.registerTreeDataProvider('explorer.vso', vsoItemsProvider);
 	vscode.commands.registerCommand("vsoItem.open", (node: VsoItem) => node.open());
-	vscode.commands.registerCommand("vsoItems.refresh", () => vsoItemsProvider.refresh());
+	vscode.commands.registerCommand("vsoItems.refresh", () => vsoItemsProvider.refresh(true /* attemptToConnect */));
 
 	context.subscriptions.push( vscode.workspace.onDidSaveTextDocument( _ => vsoItemsProvider.refresh() ));
 	context.subscriptions.push( vscode.workspace.onDidOpenTextDocument( _ => vsoItemsProvider.refresh() ));
