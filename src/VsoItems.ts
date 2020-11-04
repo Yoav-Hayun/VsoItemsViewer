@@ -188,13 +188,14 @@ class Azure {
                     this.accessToken = await this.getSettingValue(Settings.AzureAccessToken, InputBoxOptions.AzureAccessToken, promptForRequiredSettings);
                 }
                 await this._connect(this.organizationUrl, this.accessToken);
+                return Promise.resolve(this.isConnected);
             }
             finally
             {
                 this.isConnecting = false;
             }
         }
-        return Promise.resolve(this.isConnected);
+        return Promise.resolve(false);
     }
 
     get Connection() : azdev.WebApi | undefined { return this.isConnected ? this.connection : undefined;}
@@ -202,17 +203,14 @@ class Azure {
     private async _connect(organizationUrl: string | undefined, accessToken: string | undefined){
         if (accessToken && organizationUrl){
             this.connection = new azdev.WebApi(organizationUrl, azdev.getPersonalAccessTokenHandler(accessToken));
-            this.connection.connect()
-            .then( _ => {
+            try{
+                await this.connection.connect();
                 this.isConnected = true; 
-                }
-            )
-            .catch( _ => {
+            } catch {
                 this.isConnected = false;
                 this.onNewConnectionCredentials(organizationUrl, accessToken, 
                     () =>vscode.window.showErrorMessage("VSO Items: Failed to connect to Azure DevOps. Please check your Azure organization URL and access token in settings."));
-                }
-            );
+            }
         } else {
             this.isConnected = false;
             this.onNewConnectionCredentials(organizationUrl, accessToken, 
