@@ -2,16 +2,79 @@ import * as vscode from 'vscode';
 import * as azdev from "azure-devops-node-api";
 import * as path from 'path';
 
-const typeIcons: {[type: string] : string} = {
-    'Bug' : 'icon_bug.svg',
-    'Task': 'icon_task.svg',
-    'Task Group': 'icon_task_group.svg',
-    'Product Backlog Item': 'icon_backlog_item.svg',
-    'Feature': 'icon_feature.svg',
-    'Initiative': 'icon_initiative.svg',
-    'User Story' : 'icon_user_story.svg'
-};
+import { Settings, InputBoxOptions, VsoItemFields, TypeIcons } from './configurations';
 
+/**
+ * This class represents a single VSO Item
+ */
+export class VsoItem extends vscode.TreeItem {
+    private title: string = "";
+    private type: string | undefined;
+    private state: string | undefined;
+    private link: string | undefined;
+
+    private isConnected:boolean = false;
+
+    constructor
+    (
+        public readonly vsoId: number,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        vsoItemProvider: VsoItemsProvider,
+    ) 
+    {
+        super(vsoId.toString(), collapsibleState);
+        this.refresh(vsoItemProvider);
+    }
+
+    public refresh(vsoItemProvider: VsoItemsProvider){
+        if(vsoItemProvider.Connection){
+            if (this.title === ''){
+                this.title = '...';
+                vsoItemProvider.refreshUI();
+            }
+            vsoItemProvider.Connection.getWorkItemTrackingApi().then(api => {
+                this.isConnected = true;
+                api.getWorkItem(this.vsoId, [VsoItemFields.Title, VsoItemFields.Type, VsoItemFields.State]).then(workitem => {
+                    if (!workitem){
+                        this.title = "[Unknown] VSO Item";
+                    } else if (workitem.fields){
+                        this.title = workitem.fields[VsoItemFields.Title];
+                        this.type = workitem.fields[VsoItemFields.Type];
+                        this.state = workitem.fields[VsoItemFields.State];
+                        this.link = workitem._links.html.href;
+                    }
+                    vsoItemProvider.refreshUI();
+                });
+            });
+        } else {
+            this.isConnected = false;
+        }
+    }
+
+    get tooltip(): string {
+        return `${this.vsoId}: ${this.title}`;
+    }
+
+    get description(): string {
+        return this.state? `[${this.state}] ${this.title}` : this.title;
+    }
+
+    get iconPath() {
+        return this.type && TypeIcons[this.type] && path.join(__filename, '..', '..', 'resources', TypeIcons[this.type]);
+    }
+
+    public open(){
+        if (this.link){
+            vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(this.link));
+        } else if (!this.isConnected){
+            vscode.window.showErrorMessage("VSO Items: Connection is not active. Click the refresh button to reconnect.");
+        }
+    }
+}
+
+/**
+ * This class represents the list of VsoItem objects that will be displayed to the user
+ */
 export class VsoItemsProvider implements vscode.TreeDataProvider<VsoItem> {
 
     private az: Azure;
@@ -100,6 +163,9 @@ export class VsoItemsProvider implements vscode.TreeDataProvider<VsoItem> {
     }
 }
 
+/**
+ * This class represents the connection with Azure DevOps in order to fetch information on VsoItem objects
+ */
 class Azure {
     private accessToken: string | undefined;
     private organizationUrl: string | undefined;
@@ -112,138 +178,66 @@ class Azure {
     public async connect(promptForRequiredSettings:boolean=false) : Promise<boolean>{
         if(!this.isConnecting)
         {
-            this.isConnecting = true;
             try
             {
+                this.isConnecting = true;
                 if (this.isConnected){
                     return Promise.resolve(true);
                 }
-                this.organizationUrl = vscode.workspace.getConfiguration().get<string>('vsoitems.OrganizationUrl') || 
-                                            (promptForRequiredSettings ? await this.updateOrganizationUrl() : undefined);
-                if (this.organizationUrl){
-                    this.accessToken = vscode.workspace.getConfiguration().get<string>('vsoitems.AzureAccessToken') || 
-                                            (promptForRequiredSettings ? await this.updateAccessToken() : undefined);
+                if (this.organizationUrl = await this.getSettingValue(Settings.AzureOrganizationUrl, InputBoxOptions.AzureOrganizationUrl, promptForRequiredSettings)){
+                    this.accessToken = await this.getSettingValue(Settings.AzureAccessToken, InputBoxOptions.AzureAccessToken, promptForRequiredSettings);
                 }
-                const connectionAttemptString = `${this.organizationUrl}-${this.accessToken}`;
-                if (this.accessToken && this.organizationUrl){
-                    let authHandler = azdev.getPersonalAccessTokenHandler(this.accessToken); 
-                    this.connection = new azdev.WebApi(this.organizationUrl, authHandler);
-                    const connectionData = this.connection.connect(); 
-                    await connectionData.then(_ => {
-                        this.isConnected = true;
-                    }).catch(_ => {
-                        if (!this.lastConnectionAttemptString || this.lastConnectionAttemptString !== connectionAttemptString){
-                            this.lastConnectionAttemptString = connectionAttemptString;
-                            vscode.window.showErrorMessage("VSO Items: Failed to connect to Azure DevOps. Please Check your organization URL and access token in settings.");
-                        }
-                        this.isConnected = false;
-                    });
-                } else {
-                    if (!this.lastConnectionAttemptString || this.lastConnectionAttemptString !== connectionAttemptString){
-                        this.lastConnectionAttemptString = connectionAttemptString;
-                        vscode.window.showInformationMessage("VSO Items: Please provide an Azure organization URL and access token in settings");
-                        this.isConnected = false;
-                    }
-                }
-                return Promise.resolve(this.isConnected);
+                await this._connect(this.organizationUrl, this.accessToken);
             }
             finally
             {
                 this.isConnecting = false;
             }
         }
-        return Promise.resolve(false);
+        return Promise.resolve(this.isConnected);
     }
 
     get Connection() : azdev.WebApi | undefined { return this.isConnected ? this.connection : undefined;}
 
-    private async updateOrganizationUrl(){
-        let organizationUrlPrefix: string = "https://dev.azure.com/";
-        let organizationUrlSuffix: string = "{organization}";
-        const value = await vscode.window.showInputBox({
-            value: organizationUrlPrefix + organizationUrlSuffix,
-            valueSelection: [organizationUrlPrefix.length, -1],
-            prompt: "Organization URL"
-        });
-        if(value){
-            vscode.workspace.getConfiguration().update('vsoitems.OrganizationUrl', value, true);
-            return value;
-        }
-    }
-
-    private async updateAccessToken(){
-        let explanationLink: string = "https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate";
-        const value = await vscode.window.showInputBox({
-            prompt: "Access Token. [ " + explanationLink + " ]"
-        });
-        if(value){
-            vscode.workspace.getConfiguration().update('vsoitems.AzureAccessToken', value, true);
-            return value;
-        }
-    }
-}
-
-export class VsoItem extends vscode.TreeItem {
-    private title: string = "";
-    private type: string | undefined;
-    private state: string | undefined;
-    private link: string | undefined;
-
-    private isConnected:boolean = false;
-
-    constructor
-    (
-        public readonly vsoId: number,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        vsoItemProvider: VsoItemsProvider,
-    ) 
-    {
-        super(vsoId.toString(), collapsibleState);
-        this.refresh(vsoItemProvider);
-    }
-
-    public refresh(vsoItemProvider: VsoItemsProvider){
-        if(vsoItemProvider.Connection){
-            if (this.title === ''){
-                this.title = '...';
-                vsoItemProvider.refreshUI();
-            }
-            vsoItemProvider.Connection.getWorkItemTrackingApi().then(api => {
-                this.isConnected = true;
-                api.getWorkItem(this.vsoId, ['System.Title', 'System.WorkItemType', 'System.State']).then(workitem => {
-                    if (!workitem){
-                        this.title = "[Unknown] VSO Item";
-                    } else if (workitem.fields){
-                        this.title = workitem.fields['System.Title'];
-                        this.type = workitem.fields['System.WorkItemType'];
-                        this.state = workitem.fields['System.State'];
-                        this.link = workitem._links.html.href;
-                    }
-                    vsoItemProvider.refreshUI();
-                });
-            });
+    private async _connect(organizationUrl: string | undefined, accessToken: string | undefined){
+        if (accessToken && organizationUrl){
+            this.connection = new azdev.WebApi(organizationUrl, azdev.getPersonalAccessTokenHandler(accessToken));
+            this.connection.connect()
+            .then( _ => {
+                this.isConnected = true; 
+                }
+            )
+            .catch( _ => {
+                this.isConnected = false;
+                this.onNewConnectionCredentials(organizationUrl, accessToken, 
+                    () =>vscode.window.showErrorMessage("VSO Items: Failed to connect to Azure DevOps. Please check your Azure organization URL and access token in settings."));
+                }
+            );
         } else {
             this.isConnected = false;
+            this.onNewConnectionCredentials(organizationUrl, accessToken, 
+                () => vscode.window.showInformationMessage("VSO Items: Please provide an Azure organization URL and access token in settings"));
         }
     }
 
-    get tooltip(): string {
-        return `${this.vsoId}: ${this.title}`;
+    private async onNewConnectionCredentials(organizationUrl: string | undefined, accessToken: string | undefined, action : () => void ) {
+        const connectionAttemptString = `${organizationUrl}-${accessToken}`;
+        if (!this.lastConnectionAttemptString || this.lastConnectionAttemptString !== connectionAttemptString){
+            this.lastConnectionAttemptString = connectionAttemptString;
+            action();
+        }
     }
 
-    get description(): string {
-        return this.state? `[${this.state}] ${this.title}` : this.title;
+    private async getSettingValue(settingId: string, inputBoxOptions: vscode.InputBoxOptions, promptForRequiredSettings:boolean=false){
+        return vscode.workspace.getConfiguration().get<string>(settingId) || 
+                                            (promptForRequiredSettings ? await this.promptForSettingValue(settingId, inputBoxOptions) : undefined);
     }
 
-    get iconPath() {
-        return this.type && typeIcons[this.type] && path.join(__filename, '..', '..', 'resources', typeIcons[this.type]);
-    }
-
-    public open(){
-        if (this.link){
-            vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(this.link));
-        } else if (!this.isConnected){
-            vscode.window.showErrorMessage("VSO Items: Connection is not active. Click the refresh button to reconnect.");
+    private async promptForSettingValue(settingId: string, inputBoxOptions: vscode.InputBoxOptions){
+        const value = await vscode.window.showInputBox(inputBoxOptions);
+        if(value){
+            vscode.workspace.getConfiguration().update(settingId, value, true);
+            return value;
         }
     }
 }
